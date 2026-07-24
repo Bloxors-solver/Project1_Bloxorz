@@ -97,6 +97,7 @@ class Renderer:
         self.solution = None
         self.algorithm_completed = False
         self.search_result = None
+        self.search_result_level = None
         self.level_name = None
         self.current_level = None
         self.current_state = block_to_state(block, board)
@@ -154,8 +155,24 @@ class Renderer:
         self.next_level_button = Button(SCREEN_WIDTH // 2 - 100, 400, 200, 50, "Next Level", BLUE, (51, 51, 255))
         self.retry_button = Button(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 50, 200, 50, "Try Again", YELLOW, (225, 255, 100))
 
+    def _clear_ai_run(self, clear_algorithm=False):
+        """
+        Remove solution and metric data from the previous AI run.
+        """
+        self.solution = None
+        self.search_result = None
+        self.search_result_level = None
+        self.algorithm_completed = False
+
+        if clear_algorithm:
+            self.algorithm = None
+
     def initialize_level(self, level_name, AI=False):
         self.current_level = level_name
+
+        # Never reuse data from the previous level.
+        self._clear_ai_run(clear_algorithm=False)
+
         self.board = Board(level_name)
 
         x, y = self.board.level.start
@@ -174,13 +191,6 @@ class Renderer:
             self.board,
         )
         self.move_count = 0
-
-        if not AI:
-            self.solution = None
-            self.algorithm_completed = False
-            self.search_result = None
-        elif not self.algorithm_completed:
-            self.search_result = None
 
         self._sync_view_from_state()
         self.calculate_camera_offset()
@@ -214,6 +224,7 @@ class Renderer:
                 solver,
                 problem,
             )
+            self.search_result_level = self.current_level
 
             print(self.search_result.as_dict())
 
@@ -407,7 +418,9 @@ class Renderer:
         self.restart_button.update(mouse_pos)
 
         if self.menu_button.is_clicked(mouse_pos):
+            self._clear_ai_run(clear_algorithm=True)
             self.game_state = MAIN_MENU
+
         elif self.restart_button.is_clicked(mouse_pos):
             self.initialize_level(self.current_level)
 
@@ -448,13 +461,16 @@ class Renderer:
 
         if self.next_level_button.is_clicked(mouse_pos):
             if self.game_state == AI_LEVEL_COMPLETE:
+                self._clear_ai_run(clear_algorithm=True)
                 self.game_state = ALGORITHMS_LEVEL_SELECT
             else:
                 self.board.switch_level()
                 next_level = self.board.level.level_name
                 self.initialize_level(next_level)
                 self.game_state = PLAYING
+
         elif self.menu_button.is_clicked(mouse_pos):
+            self._clear_ai_run(clear_algorithm=True)
             self.game_state = MAIN_MENU
 
     def draw_level_complete(self):
@@ -484,6 +500,7 @@ class Renderer:
         if (
             self.game_state == AI_LEVEL_COMPLETE
             and self.search_result is not None
+            and self.search_result_level == self.current_level
         ):
             self._draw_search_metrics()
 
@@ -837,12 +854,6 @@ class Renderer:
                 WHITE_CLOUD,
             )
             self.screen.blit(cube_text, (20, 100))
-
-        if self.game_state in {
-            AI_PLAYING,
-            AI_LEVEL_COMPLETE,
-        }:
-            self._draw_search_metrics()
 
         if self.game_state == AI_PLAYING and self.solution:
             action = self.solution.popleft()
