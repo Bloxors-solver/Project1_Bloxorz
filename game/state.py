@@ -49,20 +49,26 @@ class GameState:
 
     def __post_init__(self) -> None:
         if self.mode == "normal":
-            if self.orientation == "upright" and len(self.positions) != 1:
-                raise ValueError(
-                    "An upright block must occupy exactly one cell."
-                )
+            if self.orientation == "upright":
+                if len(self.positions) != 1:
+                    raise ValueError(
+                        "An upright block must occupy exactly one cell."
+                    )
 
-            if self.orientation in {"horizontal", "vertical"}:
+            elif self.orientation in {"horizontal", "vertical"}:
                 if len(self.positions) != 2:
                     raise ValueError(
                         "A lying block must occupy exactly two cells."
                     )
 
-            if self.orientation == "split":
+            elif self.orientation == "split":
                 raise ValueError(
                     "Normal mode cannot use split orientation."
+                )
+
+            else:
+                raise ValueError(
+                    f"Unsupported normal orientation: {self.orientation}"
                 )
 
         elif self.mode == "split":
@@ -76,13 +82,20 @@ class GameState:
                     "Split mode must contain exactly two cubes."
                 )
 
+            if len(set(self.positions)) != 2:
+                raise ValueError(
+                    "The two split cubes must occupy different cells."
+                )
+
             if self.active_cube not in (0, 1):
                 raise ValueError(
                     "active_cube must be either 0 or 1."
                 )
 
         else:
-            raise ValueError(f"Unsupported mode: {self.mode}")
+            raise ValueError(
+                f"Unsupported mode: {self.mode}"
+            )
 
     @property
     def is_split(self) -> bool:
@@ -96,6 +109,11 @@ class GameState:
         return self.positions[self.active_cube]
 
     def switch_active_cube(self) -> GameState:
+        """
+        Switch control between cube 0 and cube 1.
+
+        Normal block states remain unchanged.
+        """
         if not self.is_split:
             return self
 

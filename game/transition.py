@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .split_logic import apply_split_geometry
 
 # from copy import deepcopy
 
@@ -87,9 +88,10 @@ def move_geometry(
         )
 
     if state.is_split:
-        raise NotImplementedError(
-            "Split-cube movement will be implemented in Phase 3."
-        )
+        return apply_split_geometry(
+        state,
+        action,
+    )
 
     block = state_to_block(state)
     block.move(action)
