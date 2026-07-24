@@ -1,16 +1,17 @@
 from copy import deepcopy
 
 level_menu = {
-            0: "LEVEL1",
-            1: "LEVEL2",
-            2: "LEVEL3",
-            3: "LEVEL4",
-            4: "LEVEL5",
-            5: "LEVEL6",
-            6: "LEVEL7",
-            7: "LEVEL8",
-            8: "LEVEL9"
-            }
+    0: "LEVEL1",
+    1: "LEVEL2",
+    2: "LEVEL3",
+    3: "LEVEL4",
+    4: "LEVEL5",
+    5: "LEVEL6",
+    6: "LEVEL7",
+    7: "LEVEL8",
+    8: "LEVEL9",
+    9: "LEVEL10",
+}
 
 reverse_level_menu = {value: key for key, value in level_menu.items()}
 
@@ -231,6 +232,36 @@ levels = {
 
         },
 
+        "LEVEL10": {
+            "layout": [
+                [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+                [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+                [-1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0, -1],
+                [-1, -1,  0,  0,  0,  8,  0,  0,  0,  0,  7, -1],
+                [-1, -1,  0,  0,  0,  0,  0,  0,  0,  0,  0, -1],
+                [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+            ],
+
+            "start": (3, 2),
+
+            "goal": (3, 10),
+
+            "button": None,
+
+            # Split-switch position:
+            #     (3, 5)
+            #
+            # Teleport destinations:
+            #     cube 0 -> (2, 7)
+            #     cube 1 -> (4, 9)
+            "split_switches": {
+                (3, 5): (
+                    (2, 7),
+                    (4, 9),
+                ),
+            },
+        },
+
 }
 
 NUM_LEVELS = len(levels)
@@ -245,6 +276,12 @@ class Levels:
         self.start = self.level_data["start"]
         self.goal = self.level_data["goal"]
         self.button = deepcopy(self.level_data["button"])
+        self.split_switches = deepcopy(
+            self.level_data.get(
+                "split_switches",
+                {},
+            )
+        )
 
         self.width = len(self.layout[0])
         self.height = len(self.layout)
@@ -277,6 +314,8 @@ class Levels:
                 return "BUTTON_ONE_TIME_USE"
             case 7:
                 return "GOAL"
+            case 8:
+                return "SPLIT_SWITCH"
 
     def is_goal(self, position):
         return position == self.goal
@@ -289,6 +328,12 @@ class Levels:
         self.start = self.level_data["start"]
         self.goal = self.level_data["goal"]
         self.button = deepcopy(self.level_data["button"])
+        self.split_switches = deepcopy(
+            self.level_data.get(
+                "split_switches",
+                {},
+            )
+        )
         self.width = len(self.layout[0])
         self.height = len(self.layout)
 
