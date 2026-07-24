@@ -1,26 +1,53 @@
-from game import Board
+from __future__ import annotations
+
+from math import ceil
+
+from .node import Node
+from .problem import Problem
 
 
-def h1(node, problem):
-    # Manhattan distance
-    block, board_layout = node.state
-    board = Board(problem.level_name)
-    pos1 = (block.x1, block.y1)
-    pos2 = (block.x2, block.y2)
-    goal = board.level.goal
+def _minimum_manhattan_distance(
+    node: Node,
+    problem: Problem,
+) -> int:
+    goal_row, goal_col = problem.goal
 
-    dist1 = abs(pos1[0] - goal[0]) + abs(pos1[1] - goal[1])
-    dist2 = abs(pos2[0] - goal[0]) + abs(pos2[1] - goal[1])
-
-    return min(dist1, dist2)
+    return min(
+        abs(row - goal_row) + abs(col - goal_col)
+        for row, col in node.state.positions
+    )
 
 
-def h2(node, problem):
-    block, board_layout = node.state
-    pos1 = (block.x1, block.y1)
-    pos2 = (block.x2, block.y2)
+def h1(node: Node, problem: Problem) -> int:
+    """
+    Admissible distance heuristic.
 
-    distance = h1(node, problem)
-    if pos1 not in problem.goal_island or pos2 not in problem.goal_island:
-        return distance + 1000
-    return distance
+    In normal mode, one roll can move part of the block by at most
+    two grid cells, so Manhattan distance is divided by two.
+
+    In split mode, one cube moves only one cell per action.
+    """
+    distance = _minimum_manhattan_distance(
+        node,
+        problem,
+    )
+
+    if node.state.is_split:
+        return distance
+
+    return ceil(distance / 2)
+
+
+def h2(node: Node, problem: Problem) -> int:
+    """
+    Orientation-aware lower bound.
+
+    A state that is not upright cannot already be a goal state,
+    therefore it requires at least one additional action.
+    """
+    base_distance = h1(node, problem)
+
+    if node.state.orientation != "upright":
+        return max(base_distance, 1)
+
+    return base_distance
