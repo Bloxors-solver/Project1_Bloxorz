@@ -119,3 +119,10 @@ conda create -f environment.yml
 Inspired by the original Bloxorz game by Damien Clarke, released on August 22, 2007. This project was created for educational purposes to explore search algorithms in game AI.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+## Benchmark
+
+Run all required search algorithms on Level 1:
+
+```bash
+python benchmark.py --levels LEVEL1 --algorithms BFS DFS UCS "A*" --repeats 3
