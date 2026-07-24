@@ -13,6 +13,7 @@ ALGORITHMS_LEVEL_SELECT = 7
 ALGORITHMS = 8
 AI_PLAYING = 9
 AI_LEVEL_COMPLETE = 10
+COMPARISON = 11
 
 
 class InputHandler:
@@ -81,3 +82,5 @@ class InputHandler:
                     self.renderer.handle_ai_or_human(mouse_pos)
                 case 8:
                     self.renderer.handle_algorithms(mouse_pos)
+                case 11:
+                    self.renderer.handle_comparison(mouse_pos)

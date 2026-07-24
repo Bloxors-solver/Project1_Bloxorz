@@ -14,6 +14,11 @@ from search_algorithms import greedy_search
 from search_algorithms import iterative_deepening_search
 from search_algorithms import uniform_cost_search
 from search_algorithms import run_search
+from search_algorithms.comparison import (
+    run_comparison,
+    save_comparison_csv,
+    select_replay_result,
+)
 
 # Constants
 SCREEN_WIDTH = 800
@@ -51,6 +56,7 @@ ALGORITHMS_LEVEL_SELECT = 7
 ALGORITHMS = 8
 AI_PLAYING = 9
 AI_LEVEL_COMPLETE = 10
+COMPARISON = 11
 
 
 # All buttons shape and color
@@ -98,6 +104,10 @@ class Renderer:
         self.algorithm_completed = False
         self.search_result = None
         self.search_result_level = None
+        self.comparison_results = []
+        self.comparison_level = None
+        self.comparison_status = ""
+        self.comparison_csv_path = None
         self.level_name = None
         self.current_level = None
         self.current_state = block_to_state(block, board)
@@ -128,6 +138,34 @@ class Renderer:
         algorithms = ["A*", "BFS", "DFS", "Greedy", "UCS", "IDS"]
         for i, algo in enumerate(algorithms):
             self.algorithm_buttons.append(Button(SCREEN_WIDTH // 2 - 70, 100 + i*50, 100, 40, algo, CYAN, (100, 255, 255)))
+
+        self.run_all_button = Button(
+            SCREEN_WIDTH // 2 + 90,
+            195,
+            190,
+            60,
+            "Run All (4)",
+            YELLOW,
+            (255, 235, 120),
+        )
+        self.comparison_replay_button = Button(
+            170,
+            520,
+            210,
+            50,
+            "Replay A*",
+            GREEN,
+            (120, 255, 120),
+        )
+        self.comparison_back_button = Button(
+            420,
+            520,
+            210,
+            50,
+            "Back",
+            WHITE_CLOUD,
+            (230, 255, 230),
+        )
 
         # Level select buttons: LEVEL1 ... LEVEL10
         self.level_buttons = []
@@ -166,6 +204,12 @@ class Renderer:
 
         if clear_algorithm:
             self.algorithm = None
+
+    def _clear_comparison(self):
+        self.comparison_results = []
+        self.comparison_level = None
+        self.comparison_status = ""
+        self.comparison_csv_path = None
 
     def initialize_level(self, level_name, AI=False):
         self.current_level = level_name
@@ -318,6 +362,8 @@ class Renderer:
         elif self.game_state == LEVEL_COMPLETE or self.game_state == AI_LEVEL_COMPLETE:
             self.draw_level()
             self.draw_level_complete()
+        elif self.game_state == COMPARISON:
+            self.draw_comparison()
 
         pygame.display.flip()
 
@@ -392,6 +438,7 @@ class Renderer:
             button.update(mouse_pos)
             if button.is_clicked(mouse_pos):
                 self.level_name = f"LEVEL{i+1}"
+                self._clear_comparison()
                 if self.game_state == ALGORITHMS_LEVEL_SELECT:
                     self.game_state = ALGORITHMS
                 else:
@@ -532,15 +579,17 @@ class Renderer:
     # GAME_STATE 8 - ALGORITHMS
     def handle_algorithms(self, mouse_pos):
         """
-        Handle one algorithm-selection click.
-
-        The return statements prevent one mouse click from starting the
-        solver more than once, which would otherwise clear search_result.
+        Handle one algorithm-selection click or run the comparison.
         """
         self.back_button.update(mouse_pos)
+        self.run_all_button.update(mouse_pos)
 
         if self.back_button.is_clicked(mouse_pos):
             self.game_state = AI_OR_HUMAN
+            return
+
+        if self.run_all_button.is_clicked(mouse_pos):
+            self.run_all_comparison()
             return
 
         for button in self.algorithm_buttons:
@@ -571,11 +620,233 @@ class Renderer:
         )
         self.screen.blit(title, title_rect)
 
-        # Draw algorithm buttons and Back.
+        # Draw individual solver buttons.
         for button in self.algorithm_buttons:
             button.draw(self.screen)
 
+        self.run_all_button.draw(self.screen)
         self.back_button.draw(self.screen)
+
+        helper_font = pygame.font.Font(None, 24)
+        helper_lines = [
+            "Run All compares the four required algorithms:",
+            "BFS, DFS, UCS and A*.",
+            "Results are also exported to CSV.",
+        ]
+
+        for index, line in enumerate(helper_lines):
+            helper_text = helper_font.render(
+                line,
+                True,
+                BLACK,
+            )
+            self.screen.blit(
+                helper_text,
+                (
+                    SCREEN_WIDTH // 2 + 55,
+                    280 + index * 25,
+                ),
+            )
+
+    def run_all_comparison(self):
+        """
+        Run BFS, DFS, UCS and A* on fresh copies of the selected level.
+        """
+        self._clear_ai_run(clear_algorithm=True)
+        self.comparison_level = self.level_name
+        self.comparison_results = []
+        self.comparison_csv_path = None
+        self.comparison_status = "Preparing comparison..."
+        self.game_state = COMPARISON
+
+        self.draw()
+        pygame.display.flip()
+        pygame.event.pump()
+
+        def update_progress(algorithm_name, index, total):
+            self.comparison_status = (
+                f"Running {algorithm_name} ({index}/{total})..."
+            )
+            self.draw()
+            pygame.display.flip()
+            pygame.event.pump()
+
+        self.comparison_results = run_comparison(
+            self.comparison_level,
+            progress_callback=update_progress,
+        )
+
+        self.comparison_csv_path = save_comparison_csv(
+            self.comparison_results,
+            self.comparison_level,
+        )
+
+        self.comparison_status = "Comparison completed."
+
+    def handle_comparison(self, mouse_pos):
+        self.comparison_back_button.update(mouse_pos)
+        self.comparison_replay_button.update(mouse_pos)
+
+        if self.comparison_back_button.is_clicked(mouse_pos):
+            self.game_state = ALGORITHMS
+            return
+
+        if self.comparison_replay_button.is_clicked(mouse_pos):
+            replay_result = select_replay_result(
+                self.comparison_results,
+                preferred_algorithm="A*",
+            )
+
+            if replay_result is None:
+                return
+
+            replay_level = self.comparison_level
+            self.initialize_level(
+                replay_level,
+                AI=False,
+            )
+
+            self.search_result = replay_result
+            self.search_result_level = replay_level
+            self.solution = deque(replay_result.actions)
+            self.algorithm = replay_result.algorithm.lower()
+            self.algorithm_completed = True
+            self.game_state = AI_PLAYING
+
+    def draw_comparison(self):
+        self.screen.fill(LIGHT_BLUE)
+
+        title_font = pygame.font.Font(None, 48)
+        title = title_font.render(
+            "Algorithm Comparison",
+            True,
+            BLUE,
+        )
+        self.screen.blit(
+            title,
+            title.get_rect(
+                center=(SCREEN_WIDTH // 2, 45)
+            ),
+        )
+
+        info_font = pygame.font.Font(None, 25)
+        level_text = info_font.render(
+            f"Level: {self.comparison_level or '-'}",
+            True,
+            BLACK,
+        )
+        status_text = info_font.render(
+            self.comparison_status,
+            True,
+            BLACK,
+        )
+
+        self.screen.blit(level_text, (30, 85))
+        self.screen.blit(status_text, (30, 112))
+
+        columns = [
+            ("Algorithm", 30),
+            ("Time (ms)", 145),
+            ("Memory", 270),
+            ("Expanded", 385),
+            ("Length", 520),
+            ("Cost", 620),
+            ("Status", 700),
+        ]
+
+        header_font = pygame.font.Font(None, 23)
+        row_font = pygame.font.Font(None, 22)
+        header_y = 160
+
+        pygame.draw.rect(
+            self.screen,
+            DARK_GRAY,
+            (20, header_y - 8, 760, 38),
+            border_radius=5,
+        )
+
+        for label, x in columns:
+            text = header_font.render(
+                label,
+                True,
+                WHITE,
+            )
+            self.screen.blit(text, (x, header_y))
+
+        for row_index, entry in enumerate(
+            self.comparison_results
+        ):
+            y = 205 + row_index * 58
+
+            if row_index % 2 == 0:
+                pygame.draw.rect(
+                    self.screen,
+                    WHITE_CLOUD,
+                    (20, y - 8, 760, 44),
+                    border_radius=4,
+                )
+
+            result = entry.result
+
+            if result is None:
+                values = [
+                    entry.algorithm,
+                    "-",
+                    "-",
+                    "-",
+                    "-",
+                    "-",
+                    "Error",
+                ]
+            else:
+                values = [
+                    result.algorithm,
+                    f"{result.search_time_ms:.3f}",
+                    f"{result.peak_memory_mb:.4f}",
+                    str(result.expanded_nodes),
+                    str(result.solution_length),
+                    (
+                        f"{result.total_cost:g}"
+                        if result.solved
+                        else "-"
+                    ),
+                    "Solved" if result.solved else "No solution",
+                ]
+
+            for value, (_, x) in zip(values, columns):
+                color = RED if value == "Error" else BLACK
+                text = row_font.render(
+                    value,
+                    True,
+                    color,
+                )
+                self.screen.blit(text, (x, y))
+
+            if entry.error:
+                error_text = pygame.font.Font(None, 18).render(
+                    entry.error[:95],
+                    True,
+                    RED,
+                )
+                self.screen.blit(
+                    error_text,
+                    (145, y + 23),
+                )
+
+        if self.comparison_csv_path is not None:
+            csv_text = pygame.font.Font(None, 20).render(
+                f"CSV: {self.comparison_csv_path}",
+                True,
+                BLACK,
+            )
+            self.screen.blit(csv_text, (30, 470))
+
+        if self.comparison_results:
+            self.comparison_replay_button.draw(
+                self.screen
+            )
+
+        self.comparison_back_button.draw(self.screen)
 
     def start_animation(self, direction):
         self.animation_active = True
