@@ -280,6 +280,81 @@ def _transition_split(
         board,
     )
 
+def _validate_split_destinations(
+    board: Board,
+    destinations: tuple[
+        tuple[int, int],
+        tuple[int, int],
+    ],
+) -> None:
+    """
+    Validate the two configured teleport destinations.
+
+    Invalid split-switch configuration is a level-design error,
+    not a normal illegal player movement.
+    """
+    if len(destinations) != 2:
+        raise ValueError(
+            "A split switch must define exactly two destinations."
+        )
+
+    if destinations[0] == destinations[1]:
+        raise ValueError(
+            "Split-switch destinations must be different."
+        )
+
+    for position in destinations:
+        if not _position_is_supported(
+            board,
+            position,
+        ):
+            raise ValueError(
+                "Split-switch destination "
+                f"{position} is outside the board, "
+                "inside void, or on a closed bridge."
+            )
+
+
+def _apply_split_switch(
+    state: GameState,
+    board: Board,
+) -> GameState:
+    """
+    Split an upright normal block when it stands on a split switch.
+
+    A block lying across a split switch does not activate it.
+    """
+    if state.is_split:
+        return state
+
+    if state.orientation != "upright":
+        return state
+
+    switch_position = state.positions[0]
+
+    destinations = board.level.split_switches.get(
+        switch_position
+    )
+
+    if destinations is None:
+        return state
+
+    destinations = tuple(destinations)
+
+    _validate_split_destinations(
+        board,
+        destinations,
+    )
+
+    return GameState(
+        mode="split",
+        positions=destinations,
+        orientation="split",
+        bridge_states=state.bridge_states,
+        used_switches=state.used_switches,
+        active_cube=0,
+    )
+
 
 def transition(
     state: GameState,
@@ -321,10 +396,29 @@ def transition(
 
     board.refresh_layout(block)
 
-    return block_to_state(
-        block,
-        board,
-    )
+    board_state = block_to_state(
+    block,
+    board,
+)
+
+# Preserve previously activated one-time switches while also
+# recording switches newly activated by this movement.
+    next_state = GameState(
+    mode=board_state.mode,
+    positions=board_state.positions,
+    orientation=board_state.orientation,
+    bridge_states=board_state.bridge_states,
+    used_switches=(
+        state.used_switches
+        | board_state.used_switches
+    ),
+    active_cube=0,
+)
+
+    return _apply_split_switch(
+    next_state,
+    board,
+)
 
 
 def available_actions(
