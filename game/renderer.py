@@ -6,6 +6,8 @@ from game.block import Block
 from game.board import Board
 from game.game_logic import GameLogic
 from game.input_handler import InputHandler
+from game.state_adapter import block_to_state, update_block_from_state
+from game.transition import create_board_for_state, is_goal_state, transition
 from search_algorithms import Problem
 from search_algorithms import a_star
 from search_algorithms import breadth_first_search
@@ -35,6 +37,8 @@ DARK_GRAY = (50, 50, 50)
 LIGHT_BLUE = (173, 216, 230)  # sky
 HOT_PINK = (255, 0, 127)  # block
 WHITE_CLOUD = (204, 255, 204)  # clouds
+ORANGE = (255, 165, 0)  # split switch / active cube
+INACTIVE_CUBE = (255, 105, 180)
 
 # Game states
 MAIN_MENU = 0
@@ -94,6 +98,9 @@ class Renderer:
         self.solution = None
         self.algorithm_completed = False
         self.level_name = None
+        self.current_level = None
+        self.current_state = block_to_state(block, board)
+        self.move_count = 0
 
         self.animation_active = False
         self.animation_direction = None
@@ -121,14 +128,25 @@ class Renderer:
         for i, algo in enumerate(algorithms):
             self.algorithm_buttons.append(Button(SCREEN_WIDTH // 2 - 70, 100 + i*50, 100, 40, algo, CYAN, (100, 255, 255)))
 
-        # Level select buttons
+        # Level select buttons: LEVEL1 ... LEVEL10
         self.level_buttons = []
-        for i in range(3):
-            for j in range(3):
-                level_num = i * 3 + j + 1
-                x = 150 + j * 175
-                y = 150 + i * 120
-                self.level_buttons.append(Button(x, y, 125, 80, f"Level {level_num}", CYAN, (100, 255, 255)))
+        for index in range(10):
+            row = index // 5
+            column = index % 5
+            level_num = index + 1
+            x = 25 + column * 155
+            y = 150 + row * 130
+            self.level_buttons.append(
+                Button(
+                    x,
+                    y,
+                    130,
+                    80,
+                    f"Level {level_num}",
+                    CYAN,
+                    (100, 255, 255),
+                )
+            )
 
         # Game buttons
         self.menu_button = Button(SCREEN_WIDTH - 120, 20, 100, 40, "Menu", WHITE_CLOUD, (204, 255, 204))
@@ -139,14 +157,29 @@ class Renderer:
     def initialize_level(self, level_name, AI=False):
         self.current_level = level_name
         self.board = Board(level_name)
+
         x, y = self.board.level.start
         self.block = Block(x, y)
         self.game_logic = GameLogic(self.block, self.board)
-        self.input_handler = InputHandler(self.block, self.board, self.game_logic, self)
+        self.input_handler = InputHandler(
+            self.block,
+            self.board,
+            self.game_logic,
+            self,
+        )
 
-        # Update the layout with the initial block position
         self.board.refresh_layout(self.block)
+        self.current_state = block_to_state(
+            self.block,
+            self.board,
+        )
+        self.move_count = 0
 
+        if not AI:
+            self.solution = None
+            self.algorithm_completed = False
+
+        self._sync_view_from_state()
         self.calculate_camera_offset()
 
         if AI and not self.algorithm_completed:
@@ -202,6 +235,60 @@ class Renderer:
 
                 self.solution.popleft()
                 self.algorithm_completed = True
+
+    def _sync_view_from_state(self):
+        """
+        Synchronize the legacy Board/Block objects with current_state.
+
+        The search/game rules use immutable GameState. The old objects are kept
+        only so the existing menu and GameLogic structure continue to work.
+        """
+        state_board = create_board_for_state(
+            self.current_level,
+            self.current_state,
+        )
+
+        # Keep the same Board object because other objects hold references to it.
+        self.board.level = state_board.level
+
+        if not self.current_state.is_split:
+            update_block_from_state(
+                self.block,
+                self.current_state,
+            )
+
+        if hasattr(self.block, "move_counter"):
+            self.block.move_counter = self.move_count
+
+    def apply_game_action(self, action):
+        """
+        Apply one human or AI action through the shared transition engine.
+        """
+        try:
+            next_state = transition(
+                self.current_state,
+                action,
+                self.current_level,
+            )
+        except ValueError:
+            # Example: pressing SPACE while the block is not split.
+            return False
+
+        if next_state is None:
+            self.game_logic.game_over = True
+            return False
+
+        self.current_state = next_state
+        self.move_count += 1
+        self._sync_view_from_state()
+
+        if is_goal_state(
+            self.current_state,
+            self.current_level,
+        ):
+            self.game_logic.level_completed = True
+
+        return True
 
     def calculate_camera_offset(self):
         level_pixel_width = len(self.board.level.layout[0]) * TILE_SIZE
@@ -268,21 +355,21 @@ class Renderer:
         self.screen.blit(title, title_rect)
 
         rules = [
-            "MOVEMENT KEYS:"
-            "   WASD or ARROWS",
+            "MOVEMENT KEYS: WASD or ARROWS",
+            "SPACE: switch the active cube after splitting",
             "",
             "BLOCK STATES:",
-            "   -Upright: Can be on regular floor,",
-            "                     but not on glass floor",
-            "   -Horizontal/Vertical: Can be on any type of floor",
+            "   - Upright: cannot stand on fragile glass",
+            "   - Horizontal/Vertical: occupies two cells",
+            "   - Split: control one cube at a time",
             "",
             "GAME ELEMENTS:",
-            "   -Blue tile: Regular Floor",
-            "   -Green tile: Goal",
-            "   -Yellow tile: Button that activates hiddent paths",
-            "   -Black tile: Void",
-            "   -Glass Floor: The block can only traverse it on the",
-            "                             horizontal/vertical states",
+            "   - Blue: regular floor",
+            "   - Green: goal",
+            "   - Cyan: fragile/glass floor",
+            "   - Yellow/Purple: bridge switches",
+            "   - Orange: split switch",
+            "   - Black: void or closed bridge",
         ]
 
         font = pygame.font.Font(None, 24)
@@ -394,7 +481,7 @@ class Renderer:
 
         # Display move count
         font = pygame.font.Font(None, 36)
-        moves_text = font.render(f"Moves: {self.block.move_counter}", True, WHITE)
+        moves_text = font.render(f"Moves: {self.move_count}", True, WHITE)
         moves_rect = moves_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
         self.screen.blit(moves_text, moves_rect)
 
@@ -479,57 +566,197 @@ class Renderer:
 
         self.solve_button.draw(self.screen)
 
+    def _draw_state_blocks(self):
+        if self.current_state is None:
+            return
+
+        font = pygame.font.Font(None, 28)
+
+        for index, (row, column) in enumerate(
+            self.current_state.positions
+        ):
+            x = column * TILE_SIZE + self.camera_offset_x
+            y = row * TILE_SIZE + self.camera_offset_y
+
+            if self.current_state.is_split:
+                is_active = index == self.current_state.active_cube
+                color = ORANGE if is_active else INACTIVE_CUBE
+                margin = 6
+
+                pygame.draw.rect(
+                    self.screen,
+                    color,
+                    (
+                        x + margin,
+                        y + margin,
+                        TILE_SIZE - 2 * margin,
+                        TILE_SIZE - 2 * margin,
+                    ),
+                    border_radius=6,
+                )
+
+                border_color = WHITE if is_active else BLACK
+                pygame.draw.rect(
+                    self.screen,
+                    border_color,
+                    (
+                        x + margin,
+                        y + margin,
+                        TILE_SIZE - 2 * margin,
+                        TILE_SIZE - 2 * margin,
+                    ),
+                    3,
+                    border_radius=6,
+                )
+
+                label = font.render(
+                    str(index + 1),
+                    True,
+                    BLACK,
+                )
+                label_rect = label.get_rect(
+                    center=(
+                        x + TILE_SIZE // 2,
+                        y + TILE_SIZE // 2,
+                    )
+                )
+                self.screen.blit(label, label_rect)
+
+            else:
+                pygame.draw.rect(
+                    self.screen,
+                    HOT_PINK,
+                    (
+                        x + 3,
+                        y + 3,
+                        TILE_SIZE - 6,
+                        TILE_SIZE - 6,
+                    ),
+                    border_radius=5,
+                )
+                pygame.draw.rect(
+                    self.screen,
+                    BLACK,
+                    (
+                        x + 3,
+                        y + 3,
+                        TILE_SIZE - 6,
+                        TILE_SIZE - 6,
+                    ),
+                    2,
+                    border_radius=5,
+                )
+
     def draw_level(self):
-        # Draw the game grid
         layout = self.board.level.layout
 
         for i in range(self.board.level.height):
             for j in range(self.board.level.width):
                 x = j * TILE_SIZE + self.camera_offset_x
                 y = i * TILE_SIZE + self.camera_offset_y
+                tile = layout[i][j]
 
-                match layout[i][j]:
-                    case -1:  # Void
-                        pygame.draw.rect(self.screen, BLACK, (x,y, TILE_SIZE, TILE_SIZE))
-                    case 0:  # Regular floor
-                        pygame.draw.rect(self.screen, BLUE, (x, y, TILE_SIZE, TILE_SIZE))
-                        pygame.draw.rect(self.screen, BLACK, (x, y, TILE_SIZE, TILE_SIZE), 1)
-                    case 3:  # Glass floor
-                        pygame.draw.rect(self.screen, CYAN, (x, y, TILE_SIZE, TILE_SIZE))
-                        pygame.draw.rect(self.screen, BLACK, (x, y, TILE_SIZE, TILE_SIZE), 1)
-                    case 4:  # Button
-                        pygame.draw.rect(self.screen, YELLOW, (x, y, TILE_SIZE, TILE_SIZE))
-                        pygame.draw.rect(self.screen, BLACK, (x, y, TILE_SIZE, TILE_SIZE), 1)
-                    case 7:  # Goal
-                        pygame.draw.rect(self.screen, GREEN, (x, y, TILE_SIZE, TILE_SIZE))
-                        pygame.draw.rect(self.screen, BLACK, (x, y, TILE_SIZE, TILE_SIZE), 1)
-                    case 2 | 1:  # Block
-                        pygame.draw.rect(self.screen, HOT_PINK, (x, y, TILE_SIZE, TILE_SIZE))
-                        pygame.draw.rect(self.screen, BLACK, (x, y, TILE_SIZE, TILE_SIZE), 1)
+                if tile == -1:
+                    color = BLACK
+                elif tile == -2:
+                    color = DARK_GRAY
+                elif tile == 0:
+                    color = BLUE
+                elif tile == 3:
+                    color = CYAN
+                elif tile == 4:
+                    color = YELLOW
+                elif tile == 5:
+                    color = PURPLE
+                elif tile == 6:
+                    color = GRAY
+                elif tile == 7:
+                    color = GREEN
+                elif tile == 8:
+                    color = ORANGE
+                else:
+                    color = BLUE
 
-        # Draw UI elements
+                pygame.draw.rect(
+                    self.screen,
+                    color,
+                    (x, y, TILE_SIZE, TILE_SIZE),
+                )
+                pygame.draw.rect(
+                    self.screen,
+                    BLACK,
+                    (x, y, TILE_SIZE, TILE_SIZE),
+                    1,
+                )
+
+                if tile == 8:
+                    # Bracket-like visual for a split switch.
+                    pygame.draw.arc(
+                        self.screen,
+                        BLACK,
+                        (x + 8, y + 8, 15, TILE_SIZE - 16),
+                        1.57,
+                        4.71,
+                        3,
+                    )
+                    pygame.draw.arc(
+                        self.screen,
+                        BLACK,
+                        (x + TILE_SIZE - 23, y + 8, 15, TILE_SIZE - 16),
+                        -1.57,
+                        1.57,
+                        3,
+                    )
+
+        self._draw_state_blocks()
+
         if self.game_state != AI_PLAYING:
             self.menu_button.draw(self.screen)
             self.restart_button.draw(self.screen)
 
-        # Draw level information
         font = pygame.font.Font(None, 32)
-        level_text = font.render(f"Level: {self.current_level.replace('LEVEL', '')}", True, WHITE_CLOUD)
+
+        level_text = font.render(
+            f"Level: {self.current_level.replace('LEVEL', '')}",
+            True,
+            WHITE_CLOUD,
+        )
         self.screen.blit(level_text, (20, 20))
 
-        moves_text = font.render(f"Moves: {self.block.move_counter}", True, WHITE_CLOUD)
+        moves_text = font.render(
+            f"Moves: {self.move_count}",
+            True,
+            WHITE_CLOUD,
+        )
         self.screen.blit(moves_text, (20, 60))
 
+        if self.current_state.is_split:
+            cube_text = font.render(
+                (
+                    f"Active cube: {self.current_state.active_cube + 1} "
+                    "(SPACE to switch)"
+                ),
+                True,
+                WHITE_CLOUD,
+            )
+            self.screen.blit(cube_text, (20, 100))
+
         if self.game_state == AI_PLAYING and self.solution:
-            self.block.move(self.solution.popleft())
-            self.board.refresh_layout(self.block)
-            pygame.time.delay(1000)
+            action = self.solution.popleft()
+            self.apply_game_action(action)
+            pygame.time.delay(500)
+
         elif self.solution is not None and not self.solution:
-            pygame.time.delay(1000)
+            pygame.time.delay(500)
             self.solution = None
             self.algorithm = None
             self.algorithm_completed = False
-            self.game_state = AI_LEVEL_COMPLETE
+
+            if is_goal_state(
+                self.current_state,
+                self.current_level,
+            ):
+                self.game_state = AI_LEVEL_COMPLETE
 
     def update_animation(self):
         pygame.display.flip()

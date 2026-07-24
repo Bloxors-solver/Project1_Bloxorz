@@ -17,6 +17,7 @@ AI_LEVEL_COMPLETE = 10
 
 class InputHandler:
     def __init__(self, block, board, game_logic, renderer):
+        # Kept for compatibility with the existing project structure.
         self.block = block
         self.board = board
         self.game_logic = game_logic
@@ -26,29 +27,38 @@ class InputHandler:
         for event in pygame.event.get():
             match event.type:
                 case pygame.QUIT:
-                    return False    # used to update run in main.py
+                    return False
+
                 case pygame.KEYDOWN:
                     if self.renderer.game_state == PLAYING:
                         self.handle_keyboard(event)
+
                 case pygame.MOUSEMOTION | pygame.MOUSEBUTTONDOWN:
                     self.handle_mouse(event)
 
         return True
 
     def handle_keyboard(self, event):
-        if self.renderer.game_state != AI_PLAYING:
-            match event.key:
-                case pygame.K_w | pygame.K_UP:
-                    self.block.move("up")
-                case pygame.K_s | pygame.K_DOWN:
-                    self.block.move("down")
-                case pygame.K_a | pygame.K_LEFT:
-                    self.block.move("left")
-                case pygame.K_d | pygame.K_RIGHT:
-                    self.block.move("right")
+        action = None
 
-        self.board.refresh_layout(self.block)
-        self.game_logic.update()
+        match event.key:
+            case pygame.K_w | pygame.K_UP:
+                action = "up"
+
+            case pygame.K_s | pygame.K_DOWN:
+                action = "down"
+
+            case pygame.K_a | pygame.K_LEFT:
+                action = "left"
+
+            case pygame.K_d | pygame.K_RIGHT:
+                action = "right"
+
+            case pygame.K_SPACE:
+                action = "switch"
+
+        if action is not None:
+            self.renderer.apply_game_action(action)
 
     def handle_mouse(self, event):
         mouse_pos = pygame.mouse.get_pos()
