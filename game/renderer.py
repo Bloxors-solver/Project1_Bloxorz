@@ -1,7 +1,5 @@
 from collections import deque
-from memory_profiler import memory_usage
 import pygame
-import time
 from game.block import Block
 from game.board import Board
 from game.game_logic import GameLogic
@@ -15,6 +13,7 @@ from search_algorithms import depth_first_search
 from search_algorithms import greedy_search
 from search_algorithms import iterative_deepening_search
 from search_algorithms import uniform_cost_search
+from search_algorithms import run_search
 
 # Constants
 SCREEN_WIDTH = 800
@@ -97,6 +96,7 @@ class Renderer:
         self.algorithm = None
         self.solution = None
         self.algorithm_completed = False
+        self.search_result = None
         self.level_name = None
         self.current_level = None
         self.current_state = block_to_state(block, board)
@@ -174,6 +174,7 @@ class Renderer:
             self.board,
         )
         self.move_count = 0
+        self.search_result = None
 
         if not AI:
             self.solution = None
@@ -183,58 +184,45 @@ class Renderer:
         self.calculate_camera_offset()
 
         if AI and not self.algorithm_completed:
-            if self.board.level.button:
-                layout_only = False
+            layout_only = not bool(self.board.level.button)
+            problem = Problem(
+                self.block,
+                self.board,
+                layout_only=layout_only,
+            )
+
+            solver_map = {
+                "a*": ("A*", a_star),
+                "bfs": ("BFS", breadth_first_search),
+                "dfs": ("DFS", depth_first_search),
+                "greedy": ("Greedy", greedy_search),
+                "ucs": ("UCS", uniform_cost_search),
+                "ids": ("IDS", iterative_deepening_search),
+            }
+
+            if self.algorithm not in solver_map:
+                raise ValueError(
+                    f"Unsupported algorithm: {self.algorithm!r}"
+                )
+
+            algorithm_name, solver = solver_map[self.algorithm]
+
+            self.search_result = run_search(
+                algorithm_name,
+                solver,
+                problem,
+            )
+
+            print(self.search_result.as_dict())
+
+            if self.search_result.solved:
+                self.solution = deque(
+                    self.search_result.actions
+                )
             else:
-                layout_only = True
-            problem = Problem(self.block, self.board, layout_only=layout_only)
+                self.solution = None
 
-            match self.algorithm:
-                case "a*":
-                    start = time.perf_counter()
-                    solution_node = a_star(problem)
-                    # mem_usage, solution_node = memory_usage((a_star, (problem,)), retval=True)
-                    end = time.perf_counter()
-                case "bfs":
-                    start = time.perf_counter()
-                    solution_node = breadth_first_search(problem)
-                    # mem_usage, solution_node = memory_usage((breadth_first_search, (problem,)), retval=True)
-                    end = time.perf_counter()
-                case "dfs":
-                    start = time.perf_counter()
-                    solution_node = depth_first_search(problem)
-                    # mem_usage, solution_node = memory_usage((depth_first_search, (problem,)), retval=True)
-                    end = time.perf_counter()
-                case "greedy":
-                    start = time.perf_counter()
-                    solution_node = greedy_search(problem)
-                    # mem_usage, solution_node = memory_usage((greedy_search, (problem,)), retval=True)
-                    end = time.perf_counter()
-                case "ucs":
-                    start = time.perf_counter()
-                    solution_node = uniform_cost_search(problem)
-                    # mem_usage, solution_node = memory_usage((uniform_cost_search, (problem,)), retval=True)
-                    end = time.perf_counter()
-                case "ids":
-                    start = time.perf_counter()
-                    solution_node = iterative_deepening_search(problem)
-                    # mem_usage, solution_node = memory_usage((iterative_deepening_search, (problem,)), retval=True)
-                    end = time.perf_counter()
-
-            print(f"Algorithm {self.algorithm} took {(end - start)*1000:.6f} ms")
-            # print(f"Peak Memory usage: {max(mem_usage):.2f} MiB")
-
-            if solution_node is not None:
-                self.solution = deque()
-                prev_node = solution_node.parent
-                self.solution.appendleft(solution_node.action)
-
-                while prev_node is not None:
-                    self.solution.appendleft(prev_node.action)
-                    prev_node = prev_node.parent
-
-                self.solution.popleft()
-                self.algorithm_completed = True
+            self.algorithm_completed = True
 
     def _sync_view_from_state(self):
         """
@@ -491,6 +479,12 @@ class Renderer:
         self.menu_button.update(pygame.mouse.get_pos())
         self.menu_button.draw(self.screen)
 
+        if (
+            self.game_state == AI_LEVEL_COMPLETE
+            and self.search_result is not None
+        ):
+            self._draw_search_metrics()
+
     # GAME_STATE 6 - AI_OR_HUMAN
     def handle_ai_or_human(self, mouse_pos):
         self.back_button.update(mouse_pos)
@@ -565,6 +559,86 @@ class Renderer:
             self.screen.blit(text, (20, 150))
 
         self.solve_button.draw(self.screen)
+
+    def _draw_search_metrics(self):
+        """
+        Draw the standardized search measurements collected by run_search().
+        """
+        if self.search_result is None:
+            return
+
+        panel_width = 255
+        panel_height = 205
+        panel_x = SCREEN_WIDTH - panel_width - 15
+        panel_y = 120
+
+        panel = pygame.Surface(
+            (panel_width, panel_height),
+            pygame.SRCALPHA,
+        )
+        panel.fill((0, 0, 0, 205))
+        self.screen.blit(
+            panel,
+            (panel_x, panel_y),
+        )
+
+        title_font = pygame.font.Font(None, 30)
+        text_font = pygame.font.Font(None, 23)
+
+        title = title_font.render(
+            "Search Statistics",
+            True,
+            WHITE,
+        )
+        self.screen.blit(
+            title,
+            (panel_x + 14, panel_y + 12),
+        )
+
+        status = (
+            "Solved"
+            if self.search_result.solved
+            else "No solution"
+        )
+
+        lines = [
+            f"Algorithm: {self.search_result.algorithm}",
+            f"Status: {status}",
+            (
+                "Time: "
+                f"{self.search_result.search_time_ms:.3f} ms"
+            ),
+            (
+                "Peak memory: "
+                f"{self.search_result.peak_memory_mb:.4f} MB"
+            ),
+            (
+                "Expanded nodes: "
+                f"{self.search_result.expanded_nodes}"
+            ),
+            (
+                "Solution length: "
+                f"{self.search_result.solution_length}"
+            ),
+            (
+                "Total cost: "
+                f"{self.search_result.total_cost:g}"
+            ),
+        ]
+
+        for index, line in enumerate(lines):
+            text = text_font.render(
+                line,
+                True,
+                WHITE_CLOUD,
+            )
+            self.screen.blit(
+                text,
+                (
+                    panel_x + 14,
+                    panel_y + 48 + index * 21,
+                ),
+            )
 
     def _draw_state_blocks(self):
         if self.current_state is None:
@@ -740,6 +814,12 @@ class Renderer:
                 WHITE_CLOUD,
             )
             self.screen.blit(cube_text, (20, 100))
+
+        if self.game_state in {
+            AI_PLAYING,
+            AI_LEVEL_COMPLETE,
+        }:
+            self._draw_search_metrics()
 
         if self.game_state == AI_PLAYING and self.solution:
             action = self.solution.popleft()
