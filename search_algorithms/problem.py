@@ -12,9 +12,6 @@ from game.transition import (
 class Problem:
     """
     Search-problem definition shared by BFS, DFS, UCS and A*.
-
-    The constructor keeps the legacy signature (block, board, layout_only)
-    so the current Renderer does not need to be changed yet.
     """
 
     def __init__(
@@ -23,8 +20,7 @@ class Problem:
         board,
         layout_only: bool = False,
     ) -> None:
-        # Retained temporarily for compatibility with the old Renderer.
-        # GameState now stores the complete searchable configuration.
+
         self.layout_only = layout_only
 
         self.level_name = board.level.level_name
@@ -35,8 +31,25 @@ class Problem:
             board,
         )
 
+        self.expanded_nodes = 0
+
+    # ---------------- Metrics ----------------
+
+    def reset_metrics(self) -> None:
+        self.expanded_nodes = 0
+
+    def record_expansion(self) -> None:
+        self.expanded_nodes += 1
+
+    # ---------------- Search API ----------------
+
     def actions(self, state: GameState) -> list[str]:
-        """Return legal actions in deterministic order."""
+        """
+        Return legal actions in deterministic order.
+        """
+
+        self.record_expansion()
+
         return available_actions(
             state,
             self.level_name,
@@ -47,7 +60,6 @@ class Problem:
         state: GameState,
         action: str,
     ) -> GameState:
-        """Return the immutable successor state."""
 
         next_state = transition(
             state,
@@ -68,12 +80,6 @@ class Problem:
         action: str,
         next_state: GameState,
     ) -> int:
-        """
-        Temporary unit cost.
-
-        A non-uniform UCS cost function will be implemented after
-        advanced tiles and split states are complete.
-        """
         return 1
 
     def is_goal(self, state: GameState) -> bool:
