@@ -174,11 +174,13 @@ class Renderer:
             self.board,
         )
         self.move_count = 0
-        self.search_result = None
 
         if not AI:
             self.solution = None
             self.algorithm_completed = False
+            self.search_result = None
+        elif not self.algorithm_completed:
+            self.search_result = None
 
         self._sync_view_from_state()
         self.calculate_camera_offset()
@@ -512,30 +514,51 @@ class Renderer:
 
     # GAME_STATE 8 - ALGORITHMS
     def handle_algorithms(self, mouse_pos):
+        """
+        Handle one algorithm-selection click.
+
+        The return statements prevent one mouse click from starting the
+        solver more than once, which would otherwise clear search_result.
+        """
         self.back_button.update(mouse_pos)
-        for button in self.algorithm_buttons:
-            button.update(mouse_pos)
 
         if self.back_button.is_clicked(mouse_pos):
             self.game_state = AI_OR_HUMAN
+            return
+
         for button in self.algorithm_buttons:
-            for i, button in enumerate(self.algorithm_buttons):
-                button.update(mouse_pos)
-                if button.is_clicked(mouse_pos):
-                    self.algorithm = button.text.lower()
-                    self.initialize_level(self.level_name, AI=True)
-                    self.game_state = AI_PLAYING
+            button.update(mouse_pos)
+
+            if button.is_clicked(mouse_pos):
+                self.algorithm = button.text.lower()
+                self.algorithm_completed = False
+
+                self.initialize_level(
+                    self.level_name,
+                    AI=True,
+                )
+
+                self.game_state = AI_PLAYING
+                return
 
     def draw_algorithms(self):
         # Draw title
         font = pygame.font.Font(None, 48)
-        title = font.render("Choose the search algorithm", True, BLUE)
-        title_rect = title.get_rect(center=(SCREEN_WIDTH // 2, 60))
+        title = font.render(
+            "Choose the search algorithm",
+            True,
+            BLUE,
+        )
+        title_rect = title.get_rect(
+            center=(SCREEN_WIDTH // 2, 60)
+        )
         self.screen.blit(title, title_rect)
 
-        # Draw buttons
+        # Draw algorithm buttons and Back.
         for button in self.algorithm_buttons:
             button.draw(self.screen)
+
+        self.back_button.draw(self.screen)
 
     def start_animation(self, direction):
         self.animation_active = True
