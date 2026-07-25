@@ -1,128 +1,256 @@
-# EIACD-Roll-the-Block
+# Bloxorz AI Lab
 
-## Introduction
-This project recreates the classic Bloxorz puzzle game (without the teleport feature) and implements various search algorithms to automatically solve each level, i.e. **Breath-First Search**, **Depth-First Search**, **Iterative Deepening Search**, **Uniform-Cost Search**, for the uninformed search algorithms, and, **Greedy Search**, **A\* Search**, for the informed search algorithms. Bloxorz is a 3D block-rolling puzzle game where players navigate a rectangular block through challenging terrain to reach a goal hole.
+A Python/Pygame implementation of the Bloxorz puzzle with manual play, advanced tiles, split-cube mechanics, multiple search algorithms, performance measurement, and an isometric 2.5D interface.
 
-## Project Structure
+> Repository: `https://github.com/tuhuynhhhh/Project1_Bloxorz`
 
-```
-.
-├── environment.yml                      # Conda environment configuration
-├── game/                                # Core game implementation
-│   ├── __init__.py                      # Makes 'game' a package
-│   ├── block.py                         # Block physics and state management
-│   ├── board.py                         # Game board
-│   ├── game_logic.py                    # Main game rules and state transitions
-│   ├── input_handler.py                 # User input processing
-│   ├── levels.py                        # Level definitions and parsing
-│   └── renderer.py                      # Visualization and graphics
-├── search_algorithms/                   # AI solvers
-│   ├── __init__.py                      # Makes 'search_algorithms' a package
-│   ├── a_star.py                        # A* search implementation
-│   ├── breadth_first_search.py          # Breadth-first search implementation
-│   ├── depth_first_search.py            # Depth-first search implementation
-│   ├── expand.py                        # Function responsible to expand nodes
-│   ├── greedy_search.py                 # Greedy search implementation
-│   ├── heuristic.py                     # Heuristic Function
-│   ├── iterative_deepening_search.py    # Iterative deepening search implementation
-│   ├── node.py                          # Node Class
-│   ├── problem.py                       # Problem Class
-│   └── uniform_cost_search.py           # Uniform-Cost search implementation
-│
-├── main.py                              # Entry point
-├── LICENSE                              # MIT License
-└── README.md                            # This documentation
-├── Time_Memory_Statistics.ods           # Statistics about each search algorithm
-├── Roll_the_Block_checkpoint.pdf        # Chekpoint presented
-└── Roll_the_Block_final.pdf             # Final Presentation
+## Highlights
+
+- Manual play with WASD or arrow keys
+- New Game, Restart, Pause/Resume AI, and algorithm-selection controls
+- Isometric 2.5D board and block rendering
+- Fragile tiles, bridges, soft switches, heavy switches, permanent/one-time switches, and split switches
+- Split-cube control with `Space` and automatic rejoining
+- BFS, DFS, IDS, UCS, Greedy Search, and A*
+- Unified immutable `GameState` shared by all solvers
+- Search metrics: time, peak memory, expanded nodes, solution length, and total cost
+- Run All comparison screen and CSV export
+- JSON level format with validation and Python fallback
+- Automated tests for movement, transitions, advanced tiles, split mechanics, solvers, metrics, benchmark export, UCS cost, and A* heuristic
+
+## Screenshots
+
+Add the final screenshots to `screenshots/` and keep these names:
+
+```text
+screenshots/main_menu.png
+screenshots/human_mode.png
+screenshots/ai_mode.png
+screenshots/split_level.png
+screenshots/comparison_table.png
+screenshots/level_complete.png
 ```
 
-## Game Rules
-The game features a 2x1x1 rectangular block that can move in four direction: **up**, **down**, **right**, **left**.
-1. **Block States**:
-   - **Upright** (2 cubes stacked in the z-axis)
-   - **Horizontal** (2 cubes side by side in the x-axis)
-   - **Vertical** (2 cubes side by side in the y-axis
-  
-<div align="center">
+Example:
 
-|Upright|Horizontal|Vertical|
-|-|-|-|
-| ![Alt1](https://github.com/user-attachments/assets/2ea5e162-915a-4098-86b0-59b527e1b5da) | ![Alt2](https://github.com/user-attachments/assets/9c52ab50-6608-48c8-ab20-5d31e0707092) | ![Alt3](https://github.com/user-attachments/assets/6b428657-d946-4903-8bdc-c4ae601ce78e) |
-
-</div>
-
-2. **Level Elements**:
-   - **Void tiles**: The block falls over, ending the game
-   - **Floor tiles**: Can support the block in any orientation
-   - **Glass Floor tiles**: Break if the block stands upright on them (must be crossed lying flat)
-   - **Goal tile**: The hole where the block must end in the upright state to win
-   - **Hidden Path**: Require the block to activate switches to cross
-   - **Buttons**
-     * *X Type*: Require the block to be standing upright to activate
-     * *Hexagonal Type*: Can be activated by the block in any orientation
-     * *One-Time-Use Type*: Have the same visual cue as the X Type, but only function one time
-
-3. **Movement**:
-   - The block always rolls over an edge
-   - Each move changes the block's orientation
-   - From the upright state, any roll makes the block lay flat (horizontal/vertical)
-   - From the horizontal/vertical state, rolling "forward" makes it stand up, while rolling "sideways" keeps it flat
-
-4. **Losing Conditions**:
-   - Block falls off the map (touches a void tile)
-   - Block stands upright on a glass tile
-
-## Project Features
-- Faithful recreation of the original Bloxorz game mechanics
-- Visual representation of the game board and block movement
-- Multiple implemented search algorithms to solve puzzles automatically
-- Implementation of the *Manhattan distance* as an heuristic for the informed search algorithms
-- Step-by-step solution visualization given by the chosen search algorithm
-Matrix Caption: </br>
-* `-2` - Hidden Path
-* `-1` - Void
-* `0` - Floor
-* `1` - Block "upright"
-* `2` - Block "horizontal" / "vertical"
-* `3` - Glass Floor
-* `4` - X Type Button
-* `5` - Hexagonal Type Button
-* `6` - One Time Use Type Button
-* `7` - Goal
-
-## Implementation Details
-The project is implemented in Python3 and features:
-- Modular game logic separated from algorithm implementations
-- Clean object-oriented design for game elements
-- Visualization layer to observe the solving process
-- Performance metrics for algorithm comparison
-
-```bash
-# Installation (using conda)
-git clone https://github.com/PedroNJorge/EIACD-Roll-the-Block
-cd EIACD-Roll-the-Block
-conda create -f environment.yml
+```markdown
+![Main menu](screenshots/main_menu.png)
 ```
 
-## How to Use
-1. Run the main file to launch the game:
-   ```bash
-   conda activate environment
-   python3 main.py
-   ```
-2. Play manually using the WASD or arrow keys
-3. Or select a search algorithm from the menu
-4. View solution statistics and replay solutions
+## Requirements
 
-## Acknowledgments
-Inspired by the original Bloxorz game by Damien Clarke, released on August 22, 2007. This project was created for educational purposes to explore search algorithms in game AI.
+- Windows 10/11, Linux, or macOS
+- Python 3.12 recommended
+- Pygame 2.6.1
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+## Installation on Windows
+
+Clone the repository:
+
+```bat
+git clone https://github.com/tuhuynhhhh/Project1_Bloxorz.git
+cd Project1_Bloxorz
+```
+
+Create and activate a virtual environment:
+
+```bat
+py -m venv .venv
+.venv\Scripts\activate
+```
+
+Upgrade pip and install dependencies:
+
+```bat
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+Run the game:
+
+```bat
+python main.py
+```
+
+## Controls
+
+| Input | Action |
+|---|---|
+| `W` / Up arrow | Move up |
+| `S` / Down arrow | Move down |
+| `A` / Left arrow | Move left |
+| `D` / Right arrow | Move right |
+| `Space` | Switch the active cube while split |
+| Mouse | Select menus, levels, algorithms, Pause/Resume, Restart, and New Game |
+
+## Game rules
+
+The normal block occupies two unit cubes and has three orientations:
+
+- `upright`: one board cell, height two
+- `horizontal`: two adjacent cells in one axis
+- `vertical`: two adjacent cells in the other axis
+
+The level is solved only when the normal block is upright on the goal.
+
+### Tile codes
+
+| Code | Tile | Behavior |
+|---:|---|---|
+| `-2` | Closed bridge / hidden path | Acts as void until opened |
+| `-1` | Void | The block falls |
+| `0` | Floor | Supports every valid orientation |
+| `3` | Fragile tile | Supports a lying block or single split cube, but not an upright normal block |
+| `4` | Heavy switch | Activated only by an upright normal block |
+| `5` | Soft switch | Activated by any occupied block part, including a single split cube |
+| `6` | Permanent/one-time heavy switch | Activated once by an upright normal block |
+| `7` | Goal | Requires an upright normal block |
+| `8` | Split switch | Requires an upright normal block and teleports it into two cubes |
+
+### Split mechanics
+
+A split switch converts the normal `1x1x2` block into two independent `1x1x1` cubes. Only one cube moves at a time. Press `Space` to change the active cube. Adjacent cubes automatically rejoin into the normal block. A single cube can activate a soft switch, but cannot activate a heavy switch or complete the level.
+
+## Search algorithms
+
+| Algorithm | Type | Notes |
+|---|---|---|
+| BFS | Uninformed | Finds the minimum number of actions under unit depth |
+| DFS | Uninformed | Memory-efficient but not optimal |
+| IDS | Uninformed | Combines DFS memory with increasing depth limits |
+| UCS | Cost-based | Uses the accumulated transition cost |
+| Greedy | Informed | Uses only the heuristic |
+| A* | Informed | Uses `f(n) = g(n) + h(n)` |
+
+### Cost model
+
+The final UCS/A* configuration uses:
+
+- normal roll or split-cube switch: cost `1`
+- successor state occupying a fragile tile: cost `3`
+
+This makes UCS meaningfully different from BFS while preserving positive action costs.
+
+### A* heuristic
+
+The heuristic uses a relaxed graph:
+
+- ignores block orientation and fragile restrictions
+- treats closed bridge positions as traversable in the relaxation
+- includes split-switch teleport edges
+- computes point distance to the goal
+- divides by two because one normal roll can advance an occupied cell by at most two grid edges
+- adds a safe lower bound when the state is not upright
+
+See `docs/ARCHITECTURE.md` and `report/REPORT_DRAFT.md`.
+
+## Level files
+
+Levels are stored in:
+
+```text
+levels/level1.json
+...
+levels/level10.json
+```
+
+The same parsed level is used by manual play and every solver. The embedded Python level dictionary remains as a fallback.
+
+See `docs/LEVEL_FORMAT.md`.
+
+## Run tests
+
+Run the complete suite:
+
+```bat
+python -m unittest discover -s tests -p "test_*.py" -v
+```
+
+Run a specific file:
+
+```bat
+python -m unittest discover -s tests -p "test_advanced_tiles.py" -v
+```
+
+The final release should record the exact passing test count in `docs/REQUIREMENTS_AUDIT.md`.
 
 ## Benchmark
 
-Run all required search algorithms on Level 1:
+Core algorithms on representative levels:
 
-```bash
-python benchmark.py --levels LEVEL1 --algorithms BFS DFS UCS "A*" --repeats 3
+```bat
+python benchmark.py ^
+  --levels LEVEL1 LEVEL2 LEVEL4 LEVEL6 LEVEL9 LEVEL10 ^
+  --algorithms BFS UCS "A*" ^
+  --repeats 5 ^
+  --output benchmark_results\final_core.csv
+```
+
+Run DFS separately to avoid long runs on difficult levels:
+
+```bat
+python benchmark.py ^
+  --levels LEVEL1 LEVEL2 ^
+  --algorithms DFS ^
+  --repeats 5 ^
+  --output benchmark_results\final_dfs.csv
+```
+
+Summarize results and generate charts:
+
+```bat
+python -m pip install -r requirements-report.txt
+python tools\summarize_benchmark.py ^
+  --input benchmark_results\final_core.csv benchmark_results\final_dfs.csv ^
+  --output-dir benchmark_results\final
+```
+
+## Project structure
+
+```text
+.
+├── game/                       # Game state, rules, levels, rendering, input
+├── levels/                     # Shared JSON level data
+├── search_algorithms/          # BFS, DFS, IDS, UCS, Greedy, A*
+├── tests/                      # Automated test suite
+├── tools/                      # Benchmark summary and release packaging
+├── benchmark_results/          # Final CSV files and charts
+├── docs/                       # Architecture, audit, attribution, AI usage
+├── report/                     # Report draft and final PDF
+├── screenshots/                # Images used by README/report
+├── benchmark.py
+├── main.py
+├── requirements.txt
+├── requirements-report.txt
+├── SOURCES.md
+├── NOTICE.md
+└── README.md
+```
+
+## Clean release package
+
+Create a source-only ZIP without `.git`, `.venv`, caches, backup files, or cloned references:
+
+```bat
+python tools\package_release.py
+```
+
+The package is created inside `dist/`.
+
+## Publishing all work to GitHub
+
+See `docs/GITHUB_PUBLISH.md`. Push the main branch, feature branches, and tags to preserve the complete project history.
+
+## Report and video
+
+- Draft: `report/REPORT_DRAFT.md`
+- Final report: `report/Report.pdf`
+- Demo video URL: place it in `report/video_link.txt` and in the final report
+
+## Attribution
+
+This project began from the MIT-licensed `roll-the-block` project by Pedro Jorge and was substantially redesigned. Other repositories were studied for ideas. Exact attribution, licenses, and original contributions are documented in `SOURCES.md` and `NOTICE.md`.
+
+## License
+
+The existing MIT license and upstream copyright notice must remain in the repository because substantial portions originated from the MIT-licensed baseline.
