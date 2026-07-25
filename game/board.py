@@ -78,7 +78,7 @@ class Board:
                     self.level.button[pos1][0] = not self.level.button[pos1][0]
                 except KeyError:
                     self.level.button[pos2][0] = not self.level.button[pos2][0]
-            elif tiles_list.count("BUTTON_ONE_TIME_USE") >= 1:
+            elif tiles_list.count("BUTTON_ONE_TIME_USE") == 2:
                 try:
                     self.level.button[pos1][0] = False
                 except KeyError:
