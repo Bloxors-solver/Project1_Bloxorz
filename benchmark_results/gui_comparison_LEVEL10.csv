@@ -1,5 +1,0 @@
-﻿level,algorithm,solved,search_time_ms,peak_memory_mb,expanded_nodes,solution_length,total_cost,actions,error
-LEVEL10,BFS,True,78.714,0.078308,82,7,7.0,right right down down right up right,
-LEVEL10,DFS,True,68.5501,0.060188,63,49,49.0,right up left down right up right down down left up left down right right up left down left up up right down right up right down down right up left down left up up right down left up right down down right up right down left up right,
-LEVEL10,UCS,True,134.2834,0.120445,148,7,7.0,right right right down switch up right,
-LEVEL10,A*,True,86.2643,0.089081,94,7,7.0,right right down down right up right,
