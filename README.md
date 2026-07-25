@@ -48,7 +48,7 @@ Example:
 Clone the repository:
 
 ```bat
-git clone https://github.com/tuhuynhhhh/Project1_Bloxorz.git
+git clone https://github.com/Bloxors-solver/Project1_Bloxorz.git
 cd Project1_Bloxorz
 ```
 
