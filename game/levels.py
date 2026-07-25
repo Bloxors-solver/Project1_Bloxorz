@@ -1,4 +1,6 @@
 from copy import deepcopy
+import json
+from pathlib import Path
 
 level_menu = {
     0: "LEVEL1",
@@ -263,6 +265,200 @@ levels = {
         },
 
 }
+
+
+# Keep the Python definitions as a safe fallback. The JSON files are the
+# primary source when the project is distributed normally.
+EMBEDDED_LEVELS = deepcopy(levels)
+DEFAULT_LEVELS_DIR = (
+    Path(__file__).resolve().parent.parent
+    / "levels"
+)
+
+
+def _coordinate(value, field_name):
+    if (
+        not isinstance(value, list)
+        or len(value) != 2
+        or not all(isinstance(item, int) for item in value)
+    ):
+        raise ValueError(
+            f"{field_name} must be a two-integer JSON array."
+        )
+
+    return tuple(value)
+
+
+def _validate_layout(layout, level_name):
+    if not isinstance(layout, list) or not layout:
+        raise ValueError(
+            f"{level_name}: layout must be a non-empty matrix."
+        )
+
+    width = len(layout[0])
+
+    if width == 0:
+        raise ValueError(
+            f"{level_name}: layout rows cannot be empty."
+        )
+
+    for row in layout:
+        if not isinstance(row, list) or len(row) != width:
+            raise ValueError(
+                f"{level_name}: all layout rows must have equal length."
+            )
+
+        if not all(isinstance(tile, int) for tile in row):
+            raise ValueError(
+                f"{level_name}: every layout tile must be an integer."
+            )
+
+    return deepcopy(layout)
+
+
+def load_level_file(path):
+    """Load and normalize one level JSON file."""
+    path = Path(path)
+
+    with path.open("r", encoding="utf-8") as level_file:
+        raw = json.load(level_file)
+
+    level_name = raw.get("name")
+
+    if not isinstance(level_name, str) or not level_name:
+        raise ValueError(
+            f"{path}: missing a valid level name."
+        )
+
+    if raw.get("schema_version", 1) != 1:
+        raise ValueError(
+            f"{level_name}: unsupported schema_version."
+        )
+
+    layout = _validate_layout(
+        raw.get("layout"),
+        level_name,
+    )
+    start = _coordinate(
+        raw.get("start"),
+        f"{level_name}.start",
+    )
+    goal = _coordinate(
+        raw.get("goal"),
+        f"{level_name}.goal",
+    )
+
+    button = {}
+
+    for index, entry in enumerate(raw.get("buttons", [])):
+        position = _coordinate(
+            entry.get("position"),
+            f"{level_name}.buttons[{index}].position",
+        )
+        bridges = tuple(
+            _coordinate(
+                bridge,
+                f"{level_name}.buttons[{index}].bridges",
+            )
+            for bridge in entry.get("bridges", [])
+        )
+        initial_state = entry.get("initial_state")
+
+        if not isinstance(initial_state, bool):
+            raise ValueError(
+                f"{level_name}.buttons[{index}].initial_state "
+                "must be true or false."
+            )
+
+        button[position] = [
+            initial_state,
+            bridges,
+        ]
+
+    split_switches = {}
+
+    for index, entry in enumerate(
+        raw.get("split_switches", [])
+    ):
+        position = _coordinate(
+            entry.get("position"),
+            (
+                f"{level_name}.split_switches"
+                f"[{index}].position"
+            ),
+        )
+        destinations = tuple(
+            _coordinate(
+                destination,
+                (
+                    f"{level_name}.split_switches"
+                    f"[{index}].destinations"
+                ),
+            )
+            for destination in entry.get(
+                "destinations",
+                [],
+            )
+        )
+
+        if len(destinations) != 2:
+            raise ValueError(
+                f"{level_name}: a split switch must have "
+                "exactly two destinations."
+            )
+
+        split_switches[position] = destinations
+
+    normalized = {
+        "layout": layout,
+        "start": start,
+        "goal": goal,
+        "button": button or None,
+    }
+
+    if split_switches:
+        normalized["split_switches"] = split_switches
+
+    return level_name, normalized
+
+
+def load_levels_from_directory(directory=DEFAULT_LEVELS_DIR):
+    """Load every level*.json file from one directory."""
+    directory = Path(directory)
+
+    if not directory.is_dir():
+        return {}
+
+    loaded = {}
+
+    for path in sorted(directory.glob("level*.json")):
+        level_name, level_data = load_level_file(path)
+
+        if level_name in loaded:
+            raise ValueError(
+                f"Duplicate JSON level name: {level_name}."
+            )
+
+        loaded[level_name] = level_data
+
+    return loaded
+
+
+JSON_LEVELS = load_levels_from_directory()
+
+if JSON_LEVELS:
+    expected_names = set(level_menu.values())
+    loaded_names = set(JSON_LEVELS)
+
+    if loaded_names != expected_names:
+        missing = sorted(expected_names - loaded_names)
+        extra = sorted(loaded_names - expected_names)
+        raise ValueError(
+            "JSON level set does not match level_menu. "
+            f"Missing={missing}, extra={extra}."
+        )
+
+    levels = JSON_LEVELS
 
 NUM_LEVELS = len(levels)
 
