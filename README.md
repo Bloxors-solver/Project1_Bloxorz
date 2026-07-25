@@ -2,7 +2,7 @@
 
 A Python/Pygame implementation of the Bloxorz puzzle with manual play, advanced tiles, split-cube mechanics, multiple search algorithms, performance measurement, and an isometric 2.5D interface.
 
-> Repository: `https://github.com/tuhuynhhhh/Project1_Bloxorz`
+> Repository: `https://github.com/Bloxors-solver/Project1_Bloxorz.git`
 
 ## Highlights
 
