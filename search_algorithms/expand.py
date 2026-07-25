@@ -16,13 +16,3 @@ def expand(problem, node):
         )
 
     return generated_nodes
-
-
-'''
-def EXPAND(problem, node) return node
-    s <- node.STATE
-    for action in problem.ACTIONS(s)
-        s' <- problem.RESULT(s, action)
-        cost <- node.PATH-COST + problem.ACTION-COST(s, action, s')
-        return NODE(STATE=s', PARENT=node, ACTION=action, PATH-COST=cost)
-'''

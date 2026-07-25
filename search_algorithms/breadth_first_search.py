@@ -24,19 +24,3 @@ def breadth_first_search(problem):
 
     return None
 
-
-'''
-def breadth_first_search(problem) return solution node or failure
-    node <- NODE(problem.INITIAL)
-    if problem.IS_GOAL(node.state) return node
-    frontier <- FIFO queue, with node as an element
-    reached <- {problem.INITIAL}
-    while frontier:
-        node <- POP(frontier)
-        for child in EXPAND(problem, node)
-            s <- child.STATE
-            if problem.IS_GOAL(s) return child
-            if s not in reached
-                add s to reached
-                add child to frontier
-'''
