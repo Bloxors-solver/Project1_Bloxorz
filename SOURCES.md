@@ -1,89 +1,103 @@
-# Sources and attribution
+# Sources and Attribution
 
-This file documents external repositories, what was studied or reused, and the project team's original work.
+This file records the external projects studied or adapted during the development of **Bloxorz AI Lab** and distinguishes them from the work implemented by the project team.
 
-## 1. Primary baseline: Roll the Block
+## 1. Primary baseline: EIACD Roll the Block
 
 - Repository: `https://github.com/PedroNJorge/roll-the-block`
-- Original project title: EIACD Roll the Block
-- Copyright: Pedro Jorge, 2025
+- Author: Pedro Jorge
+- Copyright: 2025
 - License: MIT
-- Local license file: `LICENSE`
+- Local license copy: `LICENSE`
 
-### Used or adapted
+The project began from the general structure of this repository. The reused or adapted baseline included:
 
-The project began from this repository's overall game structure, including:
+- the initial Python/Pygame application organization;
+- the board and block abstractions;
+- the basic renderer and menu structure;
+- the initial level representation;
+- the initial organization of search modules;
+- introductory implementations or concepts related to BFS, DFS, IDS, UCS, Greedy Search, and A*.
 
-- initial Pygame application organization
-- board and block concepts
-- menu/renderer baseline
-- initial level representation
-- initial search-module organization
-- basic BFS, DFS, UCS, Greedy, IDS, and A* concepts
+The current project substantially modified and extended this baseline. Because the submitted source still contains material derived from the MIT-licensed project, the original copyright and permission notice are preserved in `LICENSE` and `NOTICE.md`.
 
-The MIT copyright and permission notice must remain in copies containing substantial portions of the original software.
-
-## 2. Secondary study: Erroler/Bloxorz
+## 2. Study reference: Erroler/Bloxorz
 
 - Repository: `https://github.com/Erroler/Bloxorz`
-- Studied for:
-  - JSON level organization
-  - menu and interaction ideas
-  - algorithm-comparison presentation
-  - larger collections of puzzle levels
 
-The local clone did not contain an obvious license file. Treat this repository as a study reference only unless its license/permission is independently confirmed. Do not copy unlicensed source code into the submitted project.
+This repository was consulted only as a study reference for:
 
-Its README also states that some algorithm code was adapted from the AIMA Python repository. This project does not claim ownership of that external work.
+- JSON-based level organization;
+- menu and interaction ideas;
+- presentation of algorithm comparisons;
+- organization of larger puzzle-level collections.
 
-## 3. Secondary study: Bloxorz Solver
+No ownership is claimed over material from this repository. Its source should not be copied or substantially adapted unless its license and reuse conditions are independently verified.
+
+## 3. Study reference: Bloxorz Solver
 
 - Repository: `https://gitlab.com/egealpay/bloxorz-solver`
-- Copyright: Ege Alpay, 2018
+- Author: Ege Alpay
+- Copyright: 2018
 - License: MIT
-- Studied for:
-  - UCS and A* organization
-  - priority-queue usage
-  - solver/report ideas
 
-Any copied or substantially adapted MIT-licensed material must retain its copyright and permission notice.
+This project was studied for:
 
-## 4. Original project contributions
+- UCS and A* organization;
+- priority-queue usage;
+- solver structure;
+- ideas for presenting search results.
 
-The current project independently added or substantially redesigned:
+Any source copied or substantially adapted from this MIT-licensed project must retain the applicable copyright and permission notice.
 
-- immutable and hashable `GameState`
-- one shared state representation for manual play and all search algorithms
-- deterministic bridge-state representation
-- persistent `used_switches`
-- transition-based search API
-- safe repeated-state handling
-- advanced-tile validation
-- heavy, soft, toggle, and permanent/one-time switch behavior
-- split switch, cube teleportation, active-cube switching, and automatic rejoining
-- solver support for split and bridge states
-- unified `SearchResult` metrics
-- repeatable benchmark and CSV export
-- Run All comparison screen
-- A* replay from comparison results
-- non-uniform fragile-tile cost for UCS and A*
-- relaxed-graph A* heuristic with split-switch teleport edges
-- JSON level loader and validation
-- automated tests for movement, transitions, advanced tiles, solvers, metrics, benchmarks, costs, and heuristics
-- modern isometric 2.5D interface
-- pause/resume AI playback
-- revised tile legend, menus, popups, and block proportions
-- release/documentation workflow
+## 4. Project-team contributions
 
-## 5. Tools and assistance
+The project team independently implemented or substantially redesigned the following components:
 
-Development tools included:
+- immutable and hashable `GameState`;
+- one shared state representation for manual play and all search algorithms;
+- deterministic bridge-state representation;
+- persistent one-time-switch state through `used_switches`;
+- transition-based search interface;
+- repeated-state handling based on complete game states;
+- validation and handling of advanced tile types;
+- soft, heavy, toggle, and permanent switch behavior;
+- split-switch activation and cube teleportation;
+- independent split-cube control and active-cube switching;
+- automatic rejoining of adjacent split cubes;
+- solver support for bridge and split states;
+- unified `SearchResult` metrics;
+- search-time, peak-memory, expanded-node, solution-length, and path-cost reporting;
+- comparison mode for BFS, DFS, UCS, and A*;
+- replay support for each solved comparison algorithm;
+- CSV export from the comparison screen;
+- non-uniform fragile-tile cost for UCS and A*;
+- relaxed-graph heuristic for A* with split-switch teleport edges;
+- JSON level loading and validation;
+- modern isometric 2.5D rendering;
+- pause and resume controls for AI playback;
+- revised menus, legends, popups, and block proportions.
 
-- Python 3.12
-- Pygame
-- Git and GitHub
-- Visual Studio Code
-- unittest
-- ChatGPT for planning, debugging assistance, test design, documentation drafting, and code review suggestions
+## 5. Development tools and AI assistance
 
-The team reviewed, integrated, executed, and tested all submitted code. See `docs/AI_USAGE.md`.
+The project was developed using:
+
+- Python 3.12;
+- Pygame;
+- Git and GitHub;
+- Visual Studio Code.
+
+Generative AI assistance was used for planning, concept explanation, debugging suggestions, refactoring ideas, test design, documentation drafting, and code review support.
+
+The project team remained responsible for:
+
+- selecting and integrating accepted changes;
+- reviewing source-code compatibility;
+- executing the program;
+- checking algorithm behavior;
+- validating gameplay manually;
+- collecting experimental results;
+- writing the final report and conclusions;
+- preserving third-party attribution and license notices.
+
+AI-generated suggestions were not treated as automatically correct and were accepted only after review and local verification.
