@@ -17,7 +17,6 @@ from search_algorithms import run_search
 from search_algorithms.comparison import (
     run_comparison,
     save_comparison_csv,
-    select_replay_result,
 )
 
 # Constants
@@ -1379,21 +1378,31 @@ class Renderer:
             32,
         )
 
-        self.comparison_replay_button = Button(
-            295,
-            630,
-            225,
-            54,
-            "REPLAY A*",
-            SUCCESS,
-            (108, 226, 170),
-            WHITE,
-            27,
-        )
+        # One replay button for each required comparison algorithm.
+        # A button is shown only when that algorithm solved the level.
+        self.comparison_replay_buttons = {
+            algorithm: Button(
+                x,
+                630,
+                170,
+                54,
+                f"REPLAY {algorithm}",
+                SUCCESS,
+                (108, 226, 170),
+                WHITE,
+                23,
+            )
+            for algorithm, x in (
+                ("BFS", 55),
+                ("DFS", 245),
+                ("UCS", 435),
+                ("A*", 625),
+            )
+        }
         self.comparison_back_button = Button(
-            580,
+            845,
             630,
-            225,
+            170,
             54,
             "BACK",
             PANEL_LIGHT,
@@ -2422,35 +2431,61 @@ class Renderer:
 
         self.comparison_status = "Comparison completed."
 
+    def _comparison_result_for(self, algorithm):
+        """Return the solved result for exactly one algorithm."""
+        for entry in self.comparison_results:
+            if (
+                entry.algorithm == algorithm
+                and entry.solved
+                and entry.result is not None
+            ):
+                return entry.result
+
+        return None
+
+    def _start_comparison_replay(self, replay_result):
+        """Replay one selected comparison result from a fresh level."""
+        replay_level = self.comparison_level
+
+        if replay_level is None:
+            return
+
+        self.initialize_level(
+            replay_level,
+            AI=False,
+        )
+
+        self.search_result = replay_result
+        self.search_result_level = replay_level
+        self.solution = deque(replay_result.actions)
+        self.algorithm = replay_result.algorithm.lower()
+        self.algorithm_completed = True
+        self.game_state = AI_PLAYING
+
     def handle_comparison(self, mouse_pos):
         self.comparison_back_button.update(mouse_pos)
-        self.comparison_replay_button.update(mouse_pos)
 
         if self.comparison_back_button.is_clicked(mouse_pos):
             self.game_state = ALGORITHMS
             return
 
-        if self.comparison_replay_button.is_clicked(mouse_pos):
-            replay_result = select_replay_result(
-                self.comparison_results,
-                preferred_algorithm="A*",
+        for algorithm, button in (
+            self.comparison_replay_buttons.items()
+        ):
+            replay_result = self._comparison_result_for(
+                algorithm
             )
 
             if replay_result is None:
+                continue
+
+            button.update(mouse_pos)
+
+            if button.is_clicked(mouse_pos):
+                self._start_comparison_replay(
+                    replay_result
+                )
                 return
-
-            replay_level = self.comparison_level
-            self.initialize_level(
-                replay_level,
-                AI=False,
-            )
-
-            self.search_result = replay_result
-            self.search_result_level = replay_level
-            self.solution = deque(replay_result.actions)
-            self.algorithm = replay_result.algorithm.lower()
-            self.algorithm_completed = True
-            self.game_state = AI_PLAYING
 
     def draw_comparison(self):
         self._draw_background()
@@ -2619,10 +2654,11 @@ class Renderer:
                 topleft=(55, 588),
             )
 
-        if self.comparison_results:
-            self.comparison_replay_button.draw(
-                self.screen
-            )
+        for algorithm, button in (
+            self.comparison_replay_buttons.items()
+        ):
+            if self._comparison_result_for(algorithm) is not None:
+                button.draw(self.screen)
 
         self.comparison_back_button.draw(self.screen)
 
